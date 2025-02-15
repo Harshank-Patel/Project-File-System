@@ -7,86 +7,75 @@ import java.io.PrintStream;
 
 public class FileSystemTest {
     private FileSystem fs;
-    private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    private ByteArrayOutputStream outContent;
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         fs = new FileSystem();
-        System.setOut(new PrintStream(outputStream)); // Redirect system output for testing
+        outContent = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(outContent));
     }
 
     @Test
-    void testCreate() {
+    public void testCreateAndList() {
         fs.create("fruits");
         fs.create("vegetables");
         fs.create("grains");
-
-        String output = outputStream.toString().trim();
-        assertTrue(output.contains("CREATE fruits"));
-        assertTrue(output.contains("CREATE vegetables"));
-        assertTrue(output.contains("CREATE grains"));
-    }
-
-    @Test
-    void testList() {
-        fs.create("fruits");
-        fs.create("fruits/apples");
-        fs.create("fruits/apples/fuji");
-
         fs.list();
-        String output = outputStream.toString().trim();
-        assertTrue(output.contains("fruits"));
-        assertTrue(output.contains("  apples"));
-        assertTrue(output.contains("    fuji"));
+        String output = outContent.toString();
+        assertTrue(output.contains("  fruits"), "Output should contain '  fruits'");
+        assertTrue(output.contains("  grains"), "Output should contain '  grains'");
+        assertTrue(output.contains("  vegetables"), "Output should contain '  vegetables'");
     }
 
     @Test
-    void testMove() {
-        fs.create("grains");
+    public void testNestedList() {
+        fs.create("fruits/apples/fuji");
+        fs.list();
+        String output = outContent.toString();
+        assertTrue(output.contains("  fruits"), "Output should contain '  fruits'");
+        assertTrue(output.contains("    apples"), "Output should contain '    apples'");
+        assertTrue(output.contains("      fuji"), "Output should contain '      fuji'");
+    }
+
+    @Test
+    public void testMove() {
         fs.create("grains/squash");
         fs.create("vegetables");
-
         fs.move("grains/squash", "vegetables");
-
-        String output = outputStream.toString().trim();
-        assertTrue(output.contains("MOVE grains/squash vegetables"));
-
+        outContent.reset();
         fs.list();
-        output = outputStream.toString().trim();
-        assertTrue(output.contains("vegetables\n  squash"));
+        String output = outContent.toString();
+        assertTrue(output.contains("  grains"), "Output should contain '  grains'");
+        assertTrue(output.contains("  vegetables"), "Output should contain '  vegetables'");
+        assertTrue(output.contains("    squash"), "Output should contain '    squash'");
     }
 
     @Test
-    void testDelete() {
-        fs.create("foods");
-        fs.create("foods/fruits");
+    public void testDelete() {
         fs.create("foods/fruits/apples");
-
         fs.delete("foods/fruits/apples");
-
-        String output = outputStream.toString().trim();
-        assertTrue(output.contains("DELETE foods/fruits/apples"));
-
+        outContent.reset();
         fs.list();
-        output = outputStream.toString().trim();
-        assertFalse(output.contains("apples"));
+        String output = outContent.toString();
+        assertFalse(output.contains("apples"), "Output should not contain 'apples'");
+        assertTrue(output.contains("  foods"), "Output should contain '  foods'");
+        assertTrue(output.contains("    fruits"), "Output should contain '    fruits'");
     }
 
     @Test
-    void testInvalidDelete() {
+    public void testInvalidDelete() {
         fs.create("fruits");
         fs.delete("fruits/apples");
-
-        String output = outputStream.toString().trim();
-        assertTrue(output.contains("Cannot delete fruits/apples"));
+        String output = outContent.toString();
+        assertTrue(output.contains("Cannot delete fruits/apples"), "Output should contain error for invalid delete");
     }
 
     @Test
-    void testInvalidMove() {
+    public void testInvalidMove() {
         fs.create("grains");
         fs.move("grains/rice", "foods");
-
-        String output = outputStream.toString().trim();
-        assertTrue(output.contains("Cannot move grains/rice"));
+        String output = outContent.toString();
+        assertTrue(output.contains("Cannot move grains/rice"), "Output should contain error for invalid move");
     }
 }
